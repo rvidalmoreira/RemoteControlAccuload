@@ -33,8 +33,16 @@ public class Conexao {
 	 * @throws Exception caso ocorra alguma exceção.
 	 */
 	public void conecta(String url, String username, String password) throws Exception {
-	    Class.forName("org.postgresql.Driver");
-	    this.c = DriverManager.getConnection(url, username, password);
+		Class.forName("com.mysql.jdbc.Driver").newInstance();
+		this.c = DriverManager.getConnection(url, username, password);
+	}
+
+	public void conectaPosgres(String url, String username, String password) throws Exception {
+		// Registra o driver do PostgreSQL
+		Class.forName("org.postgresql.Driver").newInstance();
+
+		// Cria a conexão com o banco de dados
+		this.c = DriverManager.getConnection(url, username, password);
 	}
 
 	/**
@@ -135,7 +143,8 @@ public class Conexao {
 	 * @throws Exception Caso ocorra algua exceção.
 	 */
 	public String getDiaDaSemana() throws Exception {
-		//ResultSet rsRegistros = this.getRegistros("select date_format(date(now()), '%w')", new String[0]);
+		// ResultSet rsRegistros = this.getRegistros("select date_format(date(now()),
+		// '%w')", new String[0]);
 		ResultSet rsRegistros = this.getRegistros("SELECT EXTRACT(DOW FROM CURRENT_DATE)", new String[0]);
 
 		while (rsRegistros.next()) {
@@ -180,9 +189,10 @@ public class Conexao {
 	 * @throws Exception Caso ocorra alguma exceção.
 	 */
 	public String getHora() throws Exception {
-		//ResultSet rsRegistros = this.getRegistros("select time(now())", new String[0]);
+		// ResultSet rsRegistros = this.getRegistros("select time(now())", new
+		// String[0]);
 		ResultSet rsRegistros = this.getRegistros("SELECT TO_CHAR(CURRENT_TIMESTAMP, 'HH24:MI:SS')", new String[0]);
-		
+
 		while (rsRegistros.next()) {
 			return rsRegistros.getString(1);
 		}
@@ -236,9 +246,9 @@ public class Conexao {
 			PreparedStatement ps = this.c.prepareStatement(sql);
 			for (int i = 0; i < parametros.length; i++) {
 				if (isNumeric(parametros[i]) && isInteger(parametros[i])) {
-					ps.setInt(i + 1, Integer.parseInt(parametros[i])); 
+					ps.setInt(i + 1, Integer.parseInt(parametros[i]));
 				} else {
-					ps.setString(i + 1, FormatarTexto.semAcentos(parametros[i].toUpperCase())); 
+					ps.setString(i + 1, FormatarTexto.semAcentos(parametros[i].toUpperCase()));
 				}
 			}
 			ps.executeQuery();
@@ -255,17 +265,17 @@ public class Conexao {
 		}
 		return retorno;
 	}
-	
+
 	public static boolean isNumeric(String str) {
-	    return StringUtils.isNumeric(str);
+		return StringUtils.isNumeric(str);
 	}
-	
+
 	public static boolean isInteger(String str) {
-	    try {
-	        Integer.parseInt(str);
-	        return true;
-	    } catch (NumberFormatException e) {
-	        return false;
-	    }
+		try {
+			Integer.parseInt(str);
+			return true;
+		} catch (NumberFormatException e) {
+			return false;
+		}
 	}
 }

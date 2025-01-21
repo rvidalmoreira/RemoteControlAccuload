@@ -24,15 +24,16 @@
 			<artifactId>barcode4j</artifactId>
 			<version>2.1</version>
 		</dependency>
-		<!--<dependency>
+		<dependency>
 			<groupId>mysql</groupId>
 			<artifactId>mysql-connector-java</artifactId>
 			<version>5.1.24</version>
-		</dependency>-->
+		</dependency>
+		<!-- PostgreSQL Connector -->
 		<dependency>
 			<groupId>org.postgresql</groupId>
 			<artifactId>postgresql</artifactId>
-			<version>42.5.0</version>
+			<version>42.6.0</version>
 		</dependency>
 		<dependency>
 			<groupId>com.itextpdf</groupId>
@@ -116,7 +117,7 @@
 						<manifest>
 							<addClasspath>true</addClasspath>
 							<classpathPrefix>lib/</classpathPrefix>
-							<mainClass>br.com.unibraspe.RemoteControlAccuload</mainClass>
+							<mainClass>remotecontrolaccuload.RemoteControlAccuload</mainClass>
 						</manifest>
 					</archive>
 				</configuration>

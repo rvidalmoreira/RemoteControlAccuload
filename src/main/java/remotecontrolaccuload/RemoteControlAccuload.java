@@ -21,6 +21,7 @@ import java.util.Properties;
 import org.slf4j.LoggerFactory;
 
 import bd.Conexao;
+import bd.ConexaoSupervisorio;
 import bd.ConexaoUnisystem;
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
@@ -415,7 +416,7 @@ public class RemoteControlAccuload {
 		if (senha.length() > 4) {
 			//where = "where ordens_clientes.id_ordens_clientes = ? ";
 			//sParametros[0] = senha.substring(0, senha.length() - 1);
-			where = "where ordens_clientes.id = "+Integer.valueOf(senha.substring(0, senha.length() - 1)) + " ";
+			where = "where ordens_clientes.id = "+Integer.valueOf(senha.substring(0, senha.length() - 1)) + " and";
 			
 			String digito = digitoVerificador(senha.substring(0, senha.length() - 1));
 			if (!senha.endsWith(digito)) {
@@ -424,7 +425,7 @@ public class RemoteControlAccuload {
 		} else {
 			//where = "where ordens_clientes.senha = ? ";
 			//sParametros[0] = senha;
-			where = "where ordens_clientes.senha = '" + senha + "' ";
+			where = "where ordens_clientes.senha = '" + senha + "' and";
 		}
 		//String sql = "select ordens_clientes.id_ordens_clientes, ordens_clientes.id_bicos from sacc.ordens_clientes left outer join sacc.ordens on ordens.id_ordens = ordens_clientes.id_ordens left outer join sacc.clientes on clientes.id_clientes = ordens_clientes.id_clientes left outer join sacc.pessoas on pessoas.id_pessoas = clientes.id_pessoas left outer join sacc.produtos on produtos.id_produtos = ordens_clientes.id_produtos left outer join sacc.veiculos_compartimentos on veiculos_compartimentos.id_veiculos_compartimentos = ordens_clientes.id_veiculos_compartimentos left outer join sacc.veiculos on veiculos.id_veiculos = veiculos_compartimentos.id_veiculos "
 			//	+ where	+ "and ordens_clientes.ativo = 'S' and ordens.situacao = 'O' and ordens.ativo = 'S' and clientes.ativo = 'S' and pessoas.ativo = 'S' and produtos.ativo = 'S' and veiculos_compartimentos.ativo = 'S' and veiculos.ativo = 'S'";
@@ -440,7 +441,7 @@ public class RemoteControlAccuload {
 	              "  LEFT OUTER JOIN veiculos_compartimentos ON veiculos_compartimentos.id = ordens_clientes.\"veiculoCompartimentoId\" " +
 	              "  LEFT OUTER JOIN veiculos ON veiculos.id = veiculos_compartimentos.\"veiculoId\" " +
 	              where +
-	              "  AND ordens_clientes.ativo = true " +
+	              "  ordens_clientes.ativo = true " +
 	              "  AND ordens.situacao = 'O' " +
 	              "  AND ordens.ativo = true " +
 	              "  AND clientes.ativo = true " +
@@ -517,8 +518,8 @@ public class RemoteControlAccuload {
 				+ "  , LPAD(veiculos_compartimentos.compartimento::text, 2, '0') AS compartimento " // 8
 				+ "  , ordens_clientes.quantidade" // 9
 				+ "  , veiculos.id" // 10
-				+ "  , ordens_clientes.qtd_carregada" // 11
-				+ "  , ordens_clientes.qtd_completada" // 12
+				+ "  , COALESCE(ordens_clientes.qtd_carregada,0) qtd_carregada "// 11
+				+ "  , COALESCE(ordens_clientes.qtd_completada,0) qtd_completada " // 12
 				+ "  from ordens_clientes " + "       left outer join ordens "
 				+ "           on ordens.id = ordens_clientes.\"ordemId\" "
 				+ "       left outer join clientes "
@@ -795,7 +796,7 @@ public class RemoteControlAccuload {
 	}
 
 	//gravar aqui o numero da ordem para capturar na transação RS 20230626
-	public static boolean gravaOrdemMemo(int id_ordens_cliente,String ip, int porta, String endereco, Comando ca,ConexaoUnisystem c, String completa, int id_bicos) throws Exception {
+	public static boolean gravaOrdemMemo(int id_ordens_cliente,String ip, int porta, String endereco, Comando ca,ConexaoUnisystem c, String completa, int id_bicos, ConexaoSupervisorio cs) throws Exception {
 
 				String repstran = ca.EnviaComando(ip, porta, endereco,"TN");
 				LOG.info("GravaMemo - "+repstran);
@@ -810,14 +811,16 @@ public class RemoteControlAccuload {
 					//String sql =
 						//	"insert into supervisorio.transacoes_ordens_cliente(id_ordens_clientes, transacao, dt_inclusao, tipo,id_bicos) "+
 						//			"values (?,?,curdate(),?,?)";
-					String sql = "insert into transacoes_ordens_cliente(\"ordemClienteId\", transacao, tipo, \"bicoId\") "
+					String sql = "insert into transacoes_ordens_cliente(id_ordens_clientes, transacao, tipo, id_bicos) "
 							+ "values ("+id_ordens_cliente+", "+transacao+", '" + completa + "', "+id_bicos+")";
+					
 					//String[] sParametros = new String[4];
 					//sParametros[0] = Integer.toString(id_ordens_cliente); //id_ordens_clientes
 					//sParametros[1] = Integer.toString(transacao); //transacao
 					//sParametros[2] = completa;//tipo
 					//sParametros[3] = Integer.toString(id_bicos);//tipo
-					c.getConexao().executaSql(sql, new String[0]);
+					
+					cs.getConexao().executaSql(sql, new String[0]);
 					//LOG.info("GRAVANDO DADOS NA TABELA "+sql+"("+sParametros[0]+","+sParametros[1]+","+sParametros[2]+")");
 					LOG.info("GRAVANDO DADOS NA TABELA "+sql+"("+id_ordens_cliente+","+transacao+","+completa+")");
 				} catch (Exception e) {
@@ -892,16 +895,17 @@ public class RemoteControlAccuload {
 	}
 
 	public static void main(String[] args) {
-		System.out.printf("Entrou");
+		
+		System.out.printf  ("Entrou");
 		try {
-			final String ip =args[0];
+			final String ip = "192.168.10.12";// args[0];;
 			LOG = initLogger(ip);
 
 			LOG.info("UNIBRASPE Brasileira de Petroleo S/A");
 			LOG.info("Remote Control Accuload v. 8.0.3 - Iniciado as: " + getHoraMinutoSegundoAtual());
 			LOG.info("BICO: " + ip + "");
 
-			//ConexaoSupervisorio c = new ConexaoSupervisorio();
+			ConexaoSupervisorio cs = new ConexaoSupervisorio();
 			ConexaoUnisystem c = new ConexaoUnisystem();
 			
 			/**
@@ -913,7 +917,7 @@ public class RemoteControlAccuload {
 							+ ip + "' and ativo = 'S' order by id_bicos desc limit 1",
 					new String[0]);*/
 			ResultSet rsDados = c.getConexao().getRegistros(
-					"select id, porta, endereco, percentual_completar, \"produto1Id\", \"produto2Id\" from bicos where ip = '"
+					"select id, porta, endereco, percentual_completar, \"id_produtos1\", \"id_produtos2\" from bicos where ip = '"
 							+ ip + "' and ativo = true order by id desc limit 1",
 					new String[0]);
 
@@ -1868,47 +1872,50 @@ public class RemoteControlAccuload {
 								+ ",volume=" + volume + ",tipoBicoBS="+tipoBicoBS+"]");
 
 						System.out.println("Ordem cliente = "+id_ordens_clientes);
-						if(gravaOrdemMemo(id_ordens_clientes,ip,porta,endereco,ca,c,"Carregamento",id_bicos)){
+						if(gravaOrdemMemo(id_ordens_clientes,ip,porta,endereco,ca,c,"Carregamento",id_bicos,cs)){
 							System.out.println("Gravou o numero da ordem no carregamento");
 						}
 
 						if (tipoBicoBS && CarregarBS(id_bicos, ip, porta, endereco, ca, receita, volume, c, idProdutoCompart)) {
-
-							String sql = new String("update sacc.ordens_clientes set id_bicos = "
-									+ Integer.toString(id_bicos) + " , id_operadores = " + Integer.toString(operador)
-									+ ", data_inicio =  '"+java.time.LocalDate.now()+"' "
-									+" , hora_inicio = '"+horaInicio+"' "
-									+ " where id_ordens_clientes = " + Integer.toString(id_ordens_clientes)+" " +
-									"  and data_inicio is null ") ;
+							
+							String sql = new String("UPDATE ordens_clientes SET " +
+									"\"bicoId\"="+ Integer.toString(id_bicos) +" "
+					        		+ ",\"operadorId\" = " + Integer.toString(operador)+" "
+			        				+ ", data_inicio =  '"+java.time.LocalDate.now()+"' "
+	        						+" , hora_inicio = '"+horaInicio+"' "
+							        +" WHERE id = " + Integer.toString(id_ordens_clientes));
 							LOG.info("[DB] " + sql);
 							c.getConexao().executaSql(sql, new String[0]);
+								
+//							String sql = new String("update sacc.ordens_clientes set id_bicos = "
+//									+ Integer.toString(id_bicos) + " , id_operadores = " + Integer.toString(operador)
+//									+ ", data_inicio =  '"+java.time.LocalDate.now()+"' "
+//									+" , hora_inicio = '"+horaInicio+"' "
+//									+ " where id_ordens_clientes = " + Integer.toString(id_ordens_clientes)+" " +
+//									"  and data_inicio is null ") ;
+//							LOG.info("[DB] " + sql);
+//							c.getConexao().executaSql(sql, new String[0]);
 
-							sql = new String("update sacc.ordens_clientes set id_bicos = "
-									+ Integer.toString(id_bicos) + " , id_operadores = " + Integer.toString(operador)
-									+ " where id_ordens_clientes = " + Integer.toString(id_ordens_clientes) +" "
-									+ "  and data_inicio is not null ");
-
-							LOG.info("[DB - UPDATE DT] " + sql);
-							c.getConexao().executaSql(sql, new String[0]);
 							estagio = 4;
 							
 						} else if (!tipoBicoBS && Carregar(id_bicos, ip, porta, endereco, ca, receita, volume, c)) {
-
-							String sql = new String("update sacc.ordens_clientes set id_bicos = "
-									+ Integer.toString(id_bicos) + " , id_operadores = " + Integer.toString(operador)
+							
+							String sql = new String("update ordens_clientes set \"bicoId\" = "
+									+ Integer.toString(id_bicos) + " , \"operadorId\" = " + Integer.toString(operador)
 									+ ", data_inicio = '"+java.time.LocalDate.now()+"' "
 									+" , hora_inicio = '"+horaInicio+"' "
-									+ " where id_ordens_clientes = " + Integer.toString(id_ordens_clientes)
+									+ " where id = " + Integer.toString(id_ordens_clientes)
 									+ "  and data_inicio is null ") ;
 							LOG.info("[DB] " + sql);
 
-							c.getConexao().executaSql(sql, new String[0]);
-							sql = new String("update sacc.ordens_clientes set id_bicos = "
-									+ Integer.toString(id_bicos) + " , id_operadores = " + Integer.toString(operador)
-									+ " where id_ordens_clientes = " + Integer.toString(id_ordens_clientes)) +" "
-									+ "  and data_inicio is not null ";
+//							String sql = new String("update sacc.ordens_clientes set id_bicos = "
+//									+ Integer.toString(id_bicos) + " , id_operadores = " + Integer.toString(operador)
+//									+ ", data_inicio = '"+java.time.LocalDate.now()+"' "
+//									+" , hora_inicio = '"+horaInicio+"' "
+//									+ " where id_ordens_clientes = " + Integer.toString(id_ordens_clientes)
+//									+ "  and data_inicio is null ") ;
+//							LOG.info("[DB] " + sql);
 
-							LOG.info("[DB - UPDATE DT] " + sql);
 							c.getConexao().executaSql(sql, new String[0]);
 							estagio = 4;
 							
@@ -2174,7 +2181,7 @@ public class RemoteControlAccuload {
 								} else {
 
 									//gravando o numero da ordem para capturar a transacao no momento do completa
-									if(gravaOrdemMemo(id_ordens_clientes,ip,porta,endereco,ca,c,"completa",id_bicos)){
+									if(gravaOrdemMemo(id_ordens_clientes,ip,porta,endereco,ca,c,"completa",id_bicos,cs)){
 										System.out.println("Gravou o numero da ordem no completa");
 									}
 

@@ -9,8 +9,8 @@ import java.util.Properties;
  * @author d0d0
  * @since 06-01-2017
  */
-public class ConexaoUnisystem {
-	//private static final Logger LOG = Logger.getLogger(ConexaoUnisystem.class);
+public class ConexaoSupervisorio {
+	//private static final Logger LOG = Logger.getLogger(ConexaoSupervisorio.class);
 	protected static Properties PROPERTIES;
 		
 	static {
@@ -18,16 +18,13 @@ public class ConexaoUnisystem {
 	}
 
 	protected static Properties loadPropertiesFile(String filePath) {
-	    Properties prop = new Properties();
-	    try (InputStream resourceAsStream = ConexaoUnisystem.class.getClassLoader().getResourceAsStream(filePath)) {
-	        if (resourceAsStream == null) {
-	            throw new RuntimeException("Arquivo de propriedades não encontrado: " + filePath);
-	        }
-	        prop.load(resourceAsStream);
-	    } catch (IOException e) {
-	        throw new RuntimeException("Erro ao carregar o arquivo de propriedades: " + filePath, e);
-	    }
-	    return prop;
+		Properties prop = new Properties();
+		try (InputStream resourceAsStream = ConexaoSupervisorio.class.getClassLoader().getResourceAsStream(filePath)) {
+			prop.load(resourceAsStream);
+		} catch (IOException e) {
+			//LOG.error("Arquivo de propriedades nao carregado : " + filePath);
+		}
+		return prop;
 	}
 	
 	
@@ -44,11 +41,11 @@ public class ConexaoUnisystem {
      * Cria conexão com o banco.
      * @throws Exception
      */
-    public ConexaoUnisystem() throws Exception {
-    	String username = PROPERTIES.getProperty("unisystem.user");
-    	String password = PROPERTIES.getProperty("unisystem.password");
-    	String url = PROPERTIES.getProperty("unisystem.jdbc.url");
-        c.conectaPosgres(url, username, password);
+    public ConexaoSupervisorio() throws Exception {
+    	String username = PROPERTIES.getProperty("supervisorio.user");
+    	String password = PROPERTIES.getProperty("supervisorio.password");
+    	String url = PROPERTIES.getProperty("supervisorio.jdbc.url");
+        c.conecta(url, username, password);
     }
 
     /**
